@@ -1,0 +1,173 @@
+<mat-sidenav-container class="sidenav-container" autosize>
+  <mat-sidenav #sidenav mode="side" opened class="sidenav" [class.collapsed]="!isExpanded">
+    <div class="sidenav-content">
+      <div class="sidenav-header">
+        <button mat-icon-button (click)="toggleSidenav()" class="toggle-btn">
+          <mat-icon>{{ isExpanded ? 'menu_open' : 'menu' }}</mat-icon>
+        </button>
+      </div>
+
+      <div class="actions-group">
+        <h3 *ngIf="isExpanded" style="padding-left: 10px; margin-bottom: 16px;">Progress</h3>
+
+        <div class="action-item">
+          <button mat-fab class="sidebar_icon_color"
+                  (mousedown)="onToolbarButtonMouseDown($event, 'Action 1')"
+                  [matTooltip]="!isExpanded ? 'Action 1' : ''" matTooltipPosition="right">
+            <mat-icon>extension</mat-icon>
+          </button>
+          <span *ngIf="isExpanded" class="action-label">Action 1</span>
+        </div>
+
+        <div class="action-item">
+          <button mat-fab class="sidebar_icon_color"
+                  (mousedown)="onToolbarButtonMouseDown($event, 'Action 2')"
+                  [matTooltip]="!isExpanded ? 'Action 2' : ''" matTooltipPosition="right">
+            <mat-icon>extension</mat-icon>
+          </button>
+          <span *ngIf="isExpanded" class="action-label">Action 2</span>
+        </div>
+      </div>
+
+      <button mat-button (click)="clearCanvas()" class="clear-btn"
+              [matTooltip]="!isExpanded ? 'Clear All' : ''" matTooltipPosition="right">
+        <mat-icon>delete_outline</mat-icon>
+        <span *ngIf="isExpanded">Clear All</span>
+      </button>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <div class="main-content-wrapper">
+
+      <div #scrollContainer class="scroll-container" [class.with-property-panel]="propertyPanelOpen">
+        <div class="canvas">
+
+          <svg class="arrows-svg" [attr.width]="canvasWidth" [attr.height]="canvasHeight">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#555" />
+              </marker>
+            </defs>
+            <path *ngFor="let arrow of arrows"
+                  [attr.d]="arrow.path"
+                  stroke="#555"
+                  stroke-width="2.5"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  [attr.stroke-dasharray]="arrow.strokeDasharray"
+                  marker-end="url(#arrowhead)" />
+          </svg>
+
+          <div *ngFor="let item of items"
+               class="draggable-item"
+               [style.left.px]="item.position.x"
+               [style.top.px]="item.position.y"
+               [class.action-1]="item.type === 'action1'"
+               [class.action-2]="item.type === 'action2'"
+               [class.continue-btn]="item.type === 'continue'"
+               [class.reject-btn]="item.type === 'reject'"
+               [class.selected]="selectedItem?.id === item.id"
+               (mousedown)="onMouseDown($event, item)">
+
+            <div class="item-content">
+              <mat-icon class="item-icon">
+                {{ getIconName(item.type) }}
+              </mat-icon>
+            </div>
+            <span class="item-label">{{ item.label }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="property-panel" [class.open]="propertyPanelOpen">
+        <div class="property-header">
+          <h3>Properties</h3>
+          <button mat-icon-button (click)="closePropertyPanel()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="property-content" *ngIf="selectedItem">
+          <div class="property-section">
+            <div class="property-item-header">
+              <mat-icon class="property-icon">{{ getIconName(selectedItem.type) }}</mat-icon>
+              <span class="property-title">{{ selectedItem.label }}</span>
+            </div>
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="property-form">
+            <div class="form-field position-field-highlight">
+              <label class="field-label">
+                <mat-icon style="vertical-align: middle; margin-right: 4px; font-size: 18px;">location_on</mat-icon>
+                Position (X, Y)
+              </label>
+              <div style="display: flex; gap: 8px;">
+                <input type="number" class="field-input" [(ngModel)]="propertyForm.position.x" placeholder="X coordinate" style="flex: 1;">
+                <input type="number" class="field-input" [(ngModel)]="propertyForm.position.y" placeholder="Y coordinate" style="flex: 1;">
+              </div>
+              <small style="color: #666; font-size: 11px; margin-top: 4px; display: block;">
+                Current: X={{ selectedItem.position.x | number:'1.0-0' }}, Y={{ selectedItem.position.y | number:'1.0-0' }}
+              </small>
+            </div>
+
+            <mat-divider style="margin: 16px 0;"></mat-divider>
+
+            <div class="form-field" *ngFor="let key of getPropertyKeys()">
+              <label class="field-label">{{ formatLabel(key) }}</label>
+              
+              <input *ngIf="isNumberField(key)"
+                     type="number"
+                     class="field-input"
+                     [value]="getPropertyValue(key)"
+                     (input)="setPropertyValue(key, $event)"
+                     [placeholder]="'Enter ' + key">
+
+              <input *ngIf="isDateField(key)"
+                     type="text"
+                     class="field-input"
+                     [value]="getPropertyValue(key)"
+                     (input)="setPropertyValue(key, $event)"
+                     placeholder="YYYY-MM-DD HH:MM:SS">
+
+              <input *ngIf="isTextField(key)"
+                     type="text"
+                     class="field-input"
+                     [value]="getPropertyValue(key)"
+                     (input)="setPropertyValue(key, $event)"
+                     [placeholder]="'Enter ' + key">
+            </div>
+          </div>
+        </div>
+
+        <div class="property-actions">
+          <button mat-raised-button color="primary" (click)="saveProperties()">
+            <mat-icon>save</mat-icon> Save
+          </button>
+          <button mat-raised-button (click)="cancelProperties()">
+            <mat-icon>cancel</mat-icon> Cancel
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="dragPreview"
+           class="drag-preview-floating draggable-item"
+           [style.left.px]="dragPreview.x"
+           [style.top.px]="dragPreview.y"
+           [class.action-1]="dragPreview.type === 'action1'"
+           [class.action-2]="dragPreview.type === 'action2'">
+
+        <div class="item-content">
+          <mat-icon class="item-icon">
+            {{ getIconName(dragPreview.type) }}
+          </mat-icon>
+        </div>
+        <span class="item-label">{{ dragPreview.label }}</span>
+      </div>
+
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>
