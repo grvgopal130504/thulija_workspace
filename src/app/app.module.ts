@@ -15,11 +15,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { CanvaspaceComponent } from './canvaspace/canvaspace.component';
+import { CanvaworkComponent } from './canvawork/canvawork.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    WorkstatusComponent
+    WorkstatusComponent,
+    CanvaspaceComponent,
+    CanvaworkComponent
   ],
   imports: [
     BrowserModule,

@@ -1,0 +1,49 @@
+<div class="canvaspace-container">
+  <div class="controls">
+    <div class="control-group">
+      <button (click)="zoomIn()" class="control-btn" title="Zoom In">
+        <span>🔍+</span>
+      </button>
+      <button (click)="zoomOut()" class="control-btn" title="Zoom Out">
+        <span>🔍−</span>
+      </button>
+      <button (click)="resetZoom()" class="control-btn" title="Reset View">
+        <span>↺</span>
+      </button>
+      <button (click)="toggleGrid()" class="control-btn" title="Toggle Grid">
+        <span>#</span>
+      </button>
+    </div>
+    
+    <div class="control-group">
+      <button (click)="addRectangle()" class="control-btn" title="Add Rectangle">
+        <span>▢</span>
+      </button>
+      <button (click)="addCircle()" class="control-btn" title="Add Circle">
+        <span>●</span>
+      </button>
+      <button (click)="deleteSelected()" class="control-btn delete-btn" title="Delete Selected">
+        <span>🗑</span>
+      </button>
+    </div>
+  </div>
+
+  <canvas 
+    #canvas
+    (wheel)="onMouseWheel($event)"
+    (mousedown)="onMouseDown($event)"
+    (mousemove)="onMouseMove($event)"
+    (mouseup)="onMouseUp($event)"
+    (mouseleave)="onMouseUp($event)"
+  ></canvas>
+
+  <div class="instructions">
+    <p><strong>Controls:</strong></p>
+    <ul>
+      <li>Scroll to zoom in/out</li>
+      <li>Click and drag to pan the canvas</li>
+      <li>Click objects to select and drag them</li>
+      <li>Use buttons to add shapes or reset view</li>
+    </ul>
+  </div>
+</div>

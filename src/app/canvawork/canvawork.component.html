@@ -1,0 +1,59 @@
+<div class="canvas-container">
+  <canvas 
+    #canvas
+    (wheel)="onWheel($event)"
+    (mousedown)="onMouseDown($event)"
+    (mousemove)="onMouseMove($event)"
+    (mouseup)="onMouseUp()"
+    (mouseleave)="onMouseLeave()"
+  ></canvas>
+  
+  <div class="controls">
+    <button class="control-btn" (click)="zoomIn()" title="Zoom In">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    
+    <button class="control-btn" (click)="zoomOut()" title="Zoom Out">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <path d="M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    
+    <button class="control-btn" (click)="resetView()" title="Reset View">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <path d="M4 10h12M10 4v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
+      </svg>
+    </button>
+  </div>
+  
+  <div class="add-controls">
+    <button class="add-btn" (click)="addRectangle()" title="Add Rectangle">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <rect x="3" y="3" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"/>
+      </svg>
+    </button>
+    
+    <button class="add-btn" (click)="addCircle()" title="Add Circle">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="2" fill="none"/>
+      </svg>
+    </button>
+    
+    <button class="add-btn" (click)="addTriangle()" title="Add Triangle">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <path d="M10 3 L3 17 L17 17 Z" stroke="currentColor" stroke-width="2" fill="none"/>
+      </svg>
+    </button>
+  </div>
+  
+  <div class="instructions">
+    <p><strong>Controls:</strong></p>
+    <p>🖱️ Drag objects to move them</p>
+    <p>🖐️ Drag background to pan canvas</p>
+    <p>🔍 Mouse wheel to zoom</p>
+    <p>➕ Use buttons to add new shapes</p>
+  </div>
+</div>

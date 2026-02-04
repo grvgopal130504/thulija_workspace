@@ -65,9 +65,9 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
   private pollingSubscription?: Subscription;
   private lastWorkflowDataHash: string = '';
 
-  private readonly AUTO_CREATE_START_X = 120;
-  private readonly AUTO_CREATE_START_Y = 120;
-  private readonly AUTO_CREATE_VERTICAL_SPACING = 150;
+  // Spacing constants are now managed by the workflowService
+  // Access them via workflowService.getSpaceIncrease(), etc.
+  
   private autoSaveTimer: any = null;
   private canvasOffset: { left: number; top: number } | null = null;
   private scrollAtDragStart: { left: number; top: number } | null = null;
@@ -108,7 +108,7 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
           if (currentHash !== this.lastWorkflowDataHash) {
             this.lastWorkflowDataHash = currentHash;
             this.workflowData = data;
-            // console.log('Workflow data updated from server for page_id:', this.PAGE_ID);
+            console.log('Workflow data updated from localStorage for page_id:', this.PAGE_ID);
             this.autoCreateAction1FromJSON();
           }
         },
@@ -124,7 +124,7 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
         next: (data: WorkflowProcessItem[]) => {
           this.workflowData = data;
           this.lastWorkflowDataHash = JSON.stringify(this.workflowData);
-          // console.log('Workflow data loaded from server for page_id:', this.PAGE_ID, this.workflowData);
+          console.log('Workflow data loaded from localStorage for page_id:', this.PAGE_ID, this.workflowData);
           this.autoCreateAction1FromJSON();
         },
         error: (error: any) => {
@@ -147,13 +147,8 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
     const sortedData = this.workflowService.sortBySequence(this.workflowData);
 
     sortedData.forEach((workflowItem: WorkflowProcessItem, index: number) => {
-      const position = this.workflowService.calculateAutoPosition(
-        workflowItem, 
-        index,
-        this.AUTO_CREATE_START_X,
-        this.AUTO_CREATE_START_Y,
-        this.AUTO_CREATE_VERTICAL_SPACING
-      );
+      // Position is now calculated by the service using SPACE_INCREASE
+      const position = this.workflowService.calculateAutoPosition(workflowItem, index);
       
       // Check if return_input_property_value exists and is not empty
       const hasReturnValue = workflowItem['return_input_property_value'] != null && 
@@ -170,14 +165,17 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
           properties: this.workflowService.createPropertiesFromWorkflow(workflowItem, position)
         };
 
-        // Calculate positions for Continue and Reject nodes (positioned to the right of Action 2)
+        // Calculate positions for Continue and Reject nodes using configurable spacing
+        const horizontalOffset = this.workflowService.getAction2ChildHorizontalOffset();
+        const verticalSpacing = this.workflowService.getAction2ChildVerticalSpacing();
+        
         const continuePos: Position = { 
-          x: position.x + 240, 
-          y: position.y - 70 
+          x: position.x + horizontalOffset, 
+          y: position.y - (verticalSpacing / 2) 
         };
         const rejectPos: Position = { 
-          x: position.x + 240, 
-          y: position.y + 70 
+          x: position.x + horizontalOffset, 
+          y: position.y + (verticalSpacing / 2) 
         };
 
         // Create Continue node
@@ -263,160 +261,84 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
 
     this.workflowService.saveCanvasState(state)
       .subscribe({
-        next: (response: SavedState | null) => {
-          if (response) {
-            console.log('Canvas state saved');
+        next: (savedState: SavedState | null) => {
+          if (savedState) {
+            console.log('Canvas state saved to localStorage');
           }
         },
-        error: (error: any) => {
-          console.error('Error saving canvas state:', error);
-        }
+        error: (error: any) => console.error('Error saving canvas state:', error)
       });
   }
 
-  private updateWorkflowPosition(item: DraggableItem): void {
-    if (!this.isBrowser || !item.workflowId) return;
-
-    const workflowItem = this.workflowData.find((w: WorkflowProcessItem) => w.id === item.workflowId);
-    
-    if (!workflowItem) {
-      console.warn('Workflow item not found for ID:', item.workflowId);
-      return;
-    }
-
-    const updateData: any = {
-      ...workflowItem,
-      position: { x: item.position.x, y: item.position.y }
-    };
-
-    if (item.properties) {
-      Object.keys(item.properties).forEach((key: string) => {
-        if (key !== 'position' && item.properties![key] !== undefined) {
-          updateData[key] = item.properties![key];
-        }
-      });
-    }
-
-    this.workflowService.updateWorkflowPosition(
-      item.workflowId,
-      item.position,
-      updateData
-    ).subscribe({
-      next: (response: WorkflowProcessItem | null) => {
-        if (response) {
-          console.log(`Workflow item ${item.workflowId} updated - Position: (${item.position.x}, ${item.position.y})`);
-          
-          const index = this.workflowData.findIndex((w: WorkflowProcessItem) => w.id === item.workflowId);
-          if (index !== -1) {
-            this.workflowData[index] = { ...this.workflowData[index], ...updateData };
-            this.lastWorkflowDataHash = JSON.stringify(this.workflowData);
-          }
-        }
-      },
-      error: (error: any) => {
-        console.error('Error updating workflow position:', error);
-      }
-    });
-  }
-
-  private autoSavePosition(item: DraggableItem): void {
-    if (this.autoSaveTimer) {
-      clearTimeout(this.autoSaveTimer);
-    }
-
-    this.autoSaveTimer = setTimeout(() => {
-      this.updateWorkflowPosition(item);
-      this.saveCanvasState();
-    }, 500);
+  toggleSidenav(): void {
+    this.isExpanded = !this.isExpanded;
   }
 
   onToolbarButtonMouseDown(event: MouseEvent, label: string): void {
     event.preventDefault();
     event.stopPropagation();
-    
-    this.toolbarDragActive = true;
+
+    const buttonType = label === 'Action 1' ? 'action1' : 'action2';
     this.toolbarDragLabel = label;
-    this.toolbarDragType = label === 'Action 1' ? 'action1' : 'action2';
-    
+    this.toolbarDragType = buttonType;
+    this.toolbarDragActive = true;
+
     this.dragPreview = {
-      label: label,
-      type: this.toolbarDragType,
+      label,
+      type: buttonType,
       x: event.clientX,
       y: event.clientY
     };
 
-    const moveHandler = (e: MouseEvent) => this.onToolbarDragMove(e);
-    const upHandler = (e: MouseEvent) => {
-      this.onToolbarDragEnd(e);
-      document.removeEventListener('mousemove', moveHandler);
-      document.removeEventListener('mouseup', upHandler);
+    const onMouseMove = (e: MouseEvent) => {
+      if (this.dragPreview) {
+        this.dragPreview.x = e.clientX;
+        this.dragPreview.y = e.clientY;
+      }
     };
 
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', upHandler);
-  }
+    const onMouseUp = (e: MouseEvent) => {
+      if (this.toolbarDragActive && this.toolbarDragType) {
+        this.createNewItemFromToolbar(e, this.toolbarDragLabel, this.toolbarDragType);
+      }
 
-  private onToolbarDragMove(event: MouseEvent): void {
-    if (!this.toolbarDragActive || !this.dragPreview) return;
+      this.toolbarDragActive = false;
+      this.toolbarDragType = null;
+      this.dragPreview = null;
 
-    event.preventDefault();
-    
-    this.dragPreview = {
-      ...this.dragPreview,
-      x: event.clientX,
-      y: event.clientY
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
     };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   }
 
-  private onToolbarDragEnd(event: MouseEvent): void {
-    if (!this.toolbarDragActive) return;
+  private createNewItemFromToolbar(event: MouseEvent, label: string, type: 'action1' | 'action2'): void {
+    if (!this.scrollContainerRef?.nativeElement) return;
 
-    const scrollEl = this.scrollContainerRef?.nativeElement;
-    if (!scrollEl) {
-      this.resetToolbarDrag();
-      return;
-    }
+    const scrollContainer = this.scrollContainerRef.nativeElement;
+    const rect = scrollContainer.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left + scrollContainer.scrollLeft;
+    const canvasY = event.clientY - rect.top + scrollContainer.scrollTop;
 
-    const canvas = scrollEl.querySelector('.canvas') as HTMLElement;
-    if (!canvas) {
-      this.resetToolbarDrag();
-      return;
-    }
+    const snappedX = Math.round(canvasX / 20) * 20;
+    const snappedY = Math.round(canvasY / 20) * 20;
 
-    const canvasRect = canvas.getBoundingClientRect();
-    
-    if (event.clientX >= canvasRect.left && 
-        event.clientX <= canvasRect.right &&
-        event.clientY >= canvasRect.top && 
-        event.clientY <= canvasRect.bottom) {
-      
-      const x = event.clientX - canvasRect.left + scrollEl.scrollLeft;
-      const y = event.clientY - canvasRect.top + scrollEl.scrollTop;
-      
-      this.createItemAtPosition(x, y);
-    }
+    const position: Position = { x: snappedX, y: snappedY };
 
-    this.resetToolbarDrag();
-  }
-
-  private resetToolbarDrag(): void {
-    this.toolbarDragActive = false;
-    this.toolbarDragLabel = '';
-    this.toolbarDragType = null;
-    this.dragPreview = null;
-  }
-
-  private createItemAtPosition(x: number, y: number): void {
-    if (!this.toolbarDragType || !this.toolbarDragLabel) return;
-
-    const position: Position = { x: x - 70, y: y - 32 };
+    const newProperties = this.workflowService.generateDefaultProperties(
+      label,
+      position,
+      this.sequenceCounter++
+    );
 
     const newItem: DraggableItem = {
       id: this.nextId++,
-      label: this.toolbarDragLabel,
-      position: { x: position.x, y: position.y },
-      type: this.toolbarDragType,
-      properties: this.getDefaultProperties(this.toolbarDragLabel, position)
+      label,
+      position,
+      type,
+      properties: newProperties
     };
 
     this.items.push(newItem);
@@ -425,224 +347,143 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
       this.createArrow(this.lastCreatedItem, newItem);
     }
 
-    this.linkedButtons = [];
-
-    if (this.toolbarDragLabel === 'Action 2') {
-      const continuePos: Position = { x: newItem.position.x + 240, y: newItem.position.y - 70 };
-      const rejectPos: Position = { x: newItem.position.x + 240, y: newItem.position.y + 70 };
-
-      const continueBtn: DraggableItem = {
-        id: this.nextId++,
-        label: 'Continue',
-        position: { x: continuePos.x, y: continuePos.y },
-        type: 'continue',
-        properties: this.getDefaultProperties('Continue', continuePos)
-      };
-
-      const rejectBtn: DraggableItem = {
-        id: this.nextId++,
-        label: 'Reject',
-        position: { x: rejectPos.x, y: rejectPos.y },
-        type: 'reject',
-        properties: { position: { x: rejectPos.x, y: rejectPos.y } }
-      };
-
-      this.items.push(continueBtn, rejectBtn);
-
-      this.createArrow(newItem, continueBtn);
-      this.createArrow(newItem, rejectBtn);
-
-      this.linkedButtons = [continueBtn, rejectBtn];
-      this.lastCreatedItem = continueBtn;
-    } else {
-      this.lastCreatedItem = newItem;
-    }
-
+    this.lastCreatedItem = newItem;
     this.updateAllArrows();
     this.saveCanvasState();
-  }
 
-  toggleSidenav(): void {
-    this.isExpanded = !this.isExpanded;
-    setTimeout(() => this.updateAllArrows(), 320);
-  }
-
-  private getDefaultProperties(label: string, position: Position): WorkflowProperties {
-    const matchingData = this.workflowData.find((w: WorkflowProcessItem) => w.sequence === this.sequenceCounter);
-    
-    if (matchingData) {
-      const props = this.workflowService.createPropertiesFromWorkflow(matchingData, position);
-      this.sequenceCounter++;
-      return props;
-    }
-
-    return this.workflowService.generateDefaultProperties(label, position, this.sequenceCounter++);
+    console.log('New item created:', newItem);
   }
 
   onMouseDown(event: MouseEvent, item: DraggableItem): void {
+    if ((event.target as HTMLElement).closest('.property-panel')) return;
+
     event.preventDefault();
-    
+    event.stopPropagation();
+
+    const clickedOnSameItem = this.selectedItem?.id === item.id;
+
     if (this.clickTimeout) {
       clearTimeout(this.clickTimeout);
       this.clickTimeout = null;
+
+      this.openPropertyPanel(item);
+      return;
     }
 
     this.clickTimeout = setTimeout(() => {
-      if (!this.isDragging) {
-        this.onItemClick(item);
-      }
       this.clickTimeout = null;
+
+      this.selectedItem = item;
+      this.draggedItem = item;
+      this.offset = {
+        x: event.clientX - item.position.x,
+        y: event.clientY - item.position.y
+      };
+
+      const scrollContainer = this.scrollContainerRef?.nativeElement;
+      if (scrollContainer) {
+        const canvasElement = scrollContainer.querySelector('.canvas') as HTMLElement;
+        if (canvasElement) {
+          const canvasRect = canvasElement.getBoundingClientRect();
+          const scrollRect = scrollContainer.getBoundingClientRect();
+          this.canvasOffset = {
+            left: canvasRect.left - scrollRect.left,
+            top: canvasRect.top - scrollRect.top
+          };
+        }
+
+        this.scrollAtDragStart = {
+          left: scrollContainer.scrollLeft,
+          top: scrollContainer.scrollTop
+        };
+      }
+
+      this.linkedButtons = [];
+      if (item.type === 'action2') {
+        const continueBtn = this.items.find((i: DraggableItem) =>
+          i.type === 'continue' &&
+          this.arrows.some((a: Arrow) => a.from.id === item.id && a.to.id === i.id)
+        );
+        const rejectBtn = this.items.find((i: DraggableItem) =>
+          i.type === 'reject' &&
+          this.arrows.some((a: Arrow) => a.from.id === item.id && a.to.id === i.id)
+        );
+
+        if (continueBtn) this.linkedButtons.push(continueBtn);
+        if (rejectBtn) this.linkedButtons.push(rejectBtn);
+      }
+
+      this.isDragging = true;
+
+      document.addEventListener('mousemove', this.onMouseMove);
+      document.addEventListener('mouseup', this.onMouseUp);
     }, 200);
 
-    this.startDragging(item, event);
-  }
-
-  onItemClick(item: DraggableItem): void {
-    if (item.type === 'reject') return;
-
-    this.selectedItem = item;
-    this.propertyForm = { ...item.properties } as WorkflowProperties;
-    this.propertyPanelOpen = true;
-  }
-
-  closePropertyPanel(): void {
-    this.propertyPanelOpen = false;
-    this.selectedItem = null;
-    this.propertyForm = { position: { x: 0, y: 0 } };
-  }
-
-  saveProperties(): void {
-    if (!this.selectedItem) return;
-
-    let newPosition: Position = { 
-      x: this.selectedItem.position.x, 
-      y: this.selectedItem.position.y 
-    };
-
-    if (this.propertyForm.position && typeof this.propertyForm.position === 'object') {
-      const posX = Number(this.propertyForm.position.x);
-      const posY = Number(this.propertyForm.position.y);
-      if (!isNaN(posX) && !isNaN(posY)) {
-        newPosition = { x: posX, y: posY };
-      }
-    }
-
-    this.propertyForm.lastmodifiedby = 1;
-    this.propertyForm.lastmodifieddate = this.workflowService.getCurrentTimestamp();
-    
-    this.propertyForm.position = { x: newPosition.x, y: newPosition.y };
-    this.selectedItem.position = { x: newPosition.x, y: newPosition.y };
-    this.selectedItem.properties = { ...this.propertyForm };
-
-    if (this.propertyForm.name) {
-      this.selectedItem.label = this.propertyForm.name;
-    }
-
-    this.updateAllArrows();
-    this.updateWorkflowPosition(this.selectedItem);
-    this.saveCanvasState();
-    this.closePropertyPanel();
-  }
-
-  cancelProperties(): void {
-    this.closePropertyPanel();
-  }
-
-  private startDragging(item: DraggableItem, event: MouseEvent): void {
-    this.draggedItem = item;
-    this.isDragging = false;
-
-    if (item.type === 'action2') {
-      this.linkedButtons = this.items.filter(i => 
-        (i.type === 'continue' || i.type === 'reject') &&
-        this.arrows.some(arrow => arrow.from.id === item.id && arrow.to.id === i.id)
-      );
-    } else {
-      this.linkedButtons = [];
-    }
-
-    const scrollEl = this.scrollContainerRef?.nativeElement;
-    if (!scrollEl) return;
-
-    const canvas = scrollEl.querySelector('.canvas') as HTMLElement;
-    if (!canvas) return;
-
-    const canvasRect = canvas.getBoundingClientRect();
-    this.canvasOffset = {
-      left: canvasRect.left,
-      top: canvasRect.top
-    };
-
-    this.scrollAtDragStart = {
-      left: scrollEl.scrollLeft,
-      top: scrollEl.scrollTop
-    };
-
-    const mouseXInCanvas = event.clientX - canvasRect.left + scrollEl.scrollLeft;
-    const mouseYInCanvas = event.clientY - canvasRect.top + scrollEl.scrollTop;
-
-    this.offset = {
-      x: mouseXInCanvas - item.position.x,
-      y: mouseYInCanvas - item.position.y
-    };
-
-    const moveHandler = (e: MouseEvent) => this.onMouseMove(e);
-    const upHandler = () => {
-      this.onMouseUp();
-      document.removeEventListener('mousemove', moveHandler);
-      document.removeEventListener('mouseup', upHandler);
-    };
-
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', upHandler);
-  }
-
-  private onMouseMove(event: MouseEvent): void {
-    if (!this.draggedItem || !this.canvasOffset || !this.scrollAtDragStart) return;
-
-    if (!this.isDragging) {
-      this.isDragging = true;
+    const onMouseUp = () => {
       if (this.clickTimeout) {
         clearTimeout(this.clickTimeout);
         this.clickTimeout = null;
       }
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  private onMouseMove = (event: MouseEvent): void => {
+    if (!this.isDragging || !this.draggedItem) return;
+
+    const scrollContainer = this.scrollContainerRef?.nativeElement;
+    if (!scrollContainer) return;
+
+    let adjustedClientX = event.clientX;
+    let adjustedClientY = event.clientY;
+
+    if (this.canvasOffset && this.scrollAtDragStart) {
+      const currentScrollLeft = scrollContainer.scrollLeft;
+      const currentScrollTop = scrollContainer.scrollTop;
+
+      const scrollDeltaX = currentScrollLeft - this.scrollAtDragStart.left;
+      const scrollDeltaY = currentScrollTop - this.scrollAtDragStart.top;
+
+      adjustedClientX += scrollDeltaX;
+      adjustedClientY += scrollDeltaY;
     }
 
-    event.preventDefault();
+    const newX = adjustedClientX - this.offset.x;
+    const newY = adjustedClientY - this.offset.y;
 
-    const scrollEl = this.scrollContainerRef?.nativeElement;
-    if (!scrollEl) return;
-    const currentScrollLeft = scrollEl.scrollLeft;
-    const currentScrollTop  = scrollEl.scrollTop;
+    const snappedX = Math.round(newX / 20) * 20;
+    const snappedY = Math.round(newY / 20) * 20;
 
-    const newX = event.clientX - this.canvasOffset.left - this.offset.x
-               + (currentScrollLeft - this.scrollAtDragStart.left);
+    const deltaX = snappedX - this.draggedItem.position.x;
+    const deltaY = snappedY - this.draggedItem.position.y;
 
-    const newY = event.clientY - this.canvasOffset.top - this.offset.y
-               + (currentScrollTop - this.scrollAtDragStart.top);
-
-    const deltaX = newX - this.draggedItem.position.x;
-    const deltaY = newY - this.draggedItem.position.y;
-
-    this.draggedItem.position = { x: newX, y: newY };
+    this.draggedItem.position.x = snappedX;
+    this.draggedItem.position.y = snappedY;
 
     if (this.draggedItem.properties) {
-      this.draggedItem.properties.position = { x: newX, y: newY };
+      this.draggedItem.properties.position = {
+        x: snappedX,
+        y: snappedY
+      };
     }
 
     for (const linkedBtn of this.linkedButtons) {
       linkedBtn.position.x += deltaX;
       linkedBtn.position.y += deltaY;
-      
+
       if (linkedBtn.properties) {
-        linkedBtn.properties.position = { x: linkedBtn.position.x, y: linkedBtn.position.y };
+        linkedBtn.properties.position = {
+          x: linkedBtn.position.x,
+          y: linkedBtn.position.y
+        };
       }
     }
 
     this.updateAllArrows();
   }
 
-  private onMouseUp(): void {
+  private onMouseUp = (): void => {
     if (this.isDragging && this.draggedItem) {
       this.autoSavePosition(this.draggedItem);
       
@@ -659,6 +500,9 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
     this.isDragging = false;
     this.draggedItem = null;
     this.linkedButtons = [];
+
+    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mouseup', this.onMouseUp);
   }
 
   private createArrow(from: DraggableItem, to: DraggableItem): void {
@@ -840,7 +684,7 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
       this.workflowService.deleteCanvasState()
         .subscribe({
           next: (success: boolean) => {
-            if (success) console.log('Canvas state cleared');
+            if (success) console.log('Canvas state cleared from localStorage');
           },
           error: (error: any) => console.error('Error clearing canvas state:', error)
         });
@@ -852,6 +696,64 @@ export class WorkstatusComponent implements OnInit, OnDestroy {
     if (type === 'continue') return 'thumb_up';
     if (type === 'reject') return 'close';
     return 'help_outline';
+  }
+
+  openPropertyPanel(item: DraggableItem): void {
+    this.selectedItem = item;
+    this.propertyForm = item.properties ? { ...item.properties } : { position: { ...item.position } };
+    this.propertyPanelOpen = true;
+  }
+
+  closePropertyPanel(): void {
+    this.propertyPanelOpen = false;
+    this.selectedItem = null;
+  }
+
+  saveProperties(): void {
+    if (!this.selectedItem) return;
+
+    this.selectedItem.properties = { ...this.propertyForm };
+    this.selectedItem.label = this.propertyForm.name || this.selectedItem.label;
+
+    const newPosition = this.propertyForm.position;
+    if (newPosition && typeof newPosition.x === 'number' && typeof newPosition.y === 'number') {
+      this.selectedItem.position = { ...newPosition };
+    }
+
+    if (this.selectedItem.workflowId) {
+      this.autoSavePosition(this.selectedItem);
+    }
+
+    this.updateAllArrows();
+    this.saveCanvasState();
+    this.closePropertyPanel();
+  }
+
+  cancelProperties(): void {
+    this.closePropertyPanel();
+  }
+
+  private autoSavePosition(item: DraggableItem): void {
+    if (!item.workflowId) return;
+
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+    }
+
+    this.autoSaveTimer = setTimeout(() => {
+      const position = item.position;
+      const additionalData = item.properties ? { ...item.properties } : {};
+
+      this.workflowService.updateWorkflowPosition(item.workflowId!, position, additionalData)
+        .subscribe({
+          next: (updated: WorkflowProcessItem | null) => {
+            if (updated) {
+              console.log('Position auto-saved to localStorage for item:', item.workflowId);
+            }
+          },
+          error: (error: any) => console.error('Error auto-saving position:', error)
+        });
+    }, 1000);
   }
 
   getPropertyKeys(): string[] {

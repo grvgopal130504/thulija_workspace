@@ -41,8 +41,8 @@
           "id": 2,
           "label": "Verification",
           "position": {
-            "x": 285,
-            "y": 415
+            "x": 270,
+            "y": 120
           },
           "type": "action2",
           "workflowId": "4",
@@ -64,11 +64,11 @@
             "work_flow_access_level_id": 1,
             "createdby": 1,
             "createddate": "2026-01-28 10:39:30",
-            "lastmodifiedby": 1,
-            "lastmodifieddate": "2026-01-29 06:27:01",
+            "lastmodifiedby": null,
+            "lastmodifieddate": null,
             "position": {
-              "x": 285,
-              "y": 415
+              "x": 270,
+              "y": 120
             }
           }
         },
@@ -76,14 +76,14 @@
           "id": 3,
           "label": "Continue",
           "position": {
-            "x": 525,
-            "y": 345
+            "x": 510,
+            "y": 50
           },
           "type": "continue",
           "properties": {
             "position": {
-              "x": 525,
-              "y": 345
+              "x": 510,
+              "y": 50
             }
           }
         },
@@ -91,14 +91,14 @@
           "id": 4,
           "label": "Reject",
           "position": {
-            "x": 525,
-            "y": 485
+            "x": 510,
+            "y": 190
           },
           "type": "reject",
           "properties": {
             "position": {
-              "x": 525,
-              "y": 485
+              "x": 510,
+              "y": 190
             }
           }
         },
@@ -129,8 +129,8 @@
             "work_flow_access_level_id": 1,
             "createdby": 1,
             "createddate": "2026-01-28 10:39:30",
-            "lastmodifiedby": 1,
-            "lastmodifieddate": "2026-01-29 06:21:23",
+            "lastmodifiedby": null,
+            "lastmodifieddate": null,
             "position": {
               "x": 420,
               "y": 120
@@ -171,8 +171,8 @@
           "id": 8,
           "label": "Endorse",
           "position": {
-            "x": 873,
-            "y": 361
+            "x": 570,
+            "y": 120
           },
           "type": "action2",
           "workflowId": "6",
@@ -194,11 +194,11 @@
             "work_flow_access_level_id": 1,
             "createdby": 1,
             "createddate": "2026-01-28 10:39:30",
-            "lastmodifiedby": 1,
-            "lastmodifieddate": "2026-01-30 05:09:27",
+            "lastmodifiedby": null,
+            "lastmodifieddate": null,
             "position": {
-              "x": 873,
-              "y": 361
+              "x": 570,
+              "y": 120
             }
           }
         },
@@ -206,14 +206,14 @@
           "id": 9,
           "label": "Continue",
           "position": {
-            "x": 1113,
-            "y": 291
+            "x": 810,
+            "y": 50
           },
           "type": "continue",
           "properties": {
             "position": {
-              "x": 1113,
-              "y": 291
+              "x": 810,
+              "y": 50
             }
           }
         },
@@ -221,14 +221,14 @@
           "id": 10,
           "label": "Reject",
           "position": {
-            "x": 1113,
-            "y": 431
+            "x": 810,
+            "y": 190
           },
           "type": "reject",
           "properties": {
             "position": {
-              "x": 1113,
-              "y": 431
+              "x": 810,
+              "y": 190
             }
           }
         }
@@ -373,12 +373,8 @@
       "work_flow_access_level_id": 1,
       "createdby": 1,
       "createddate": "2026-01-28 10:39:30",
-      "lastmodifiedby": 1,
-      "lastmodifieddate": "2026-01-29 06:27:01",
-      "position": {
-        "x": 285,
-        "y": 415
-      }
+      "lastmodifiedby": null,
+      "lastmodifieddate": null
     },
     {
       "id": "5",
@@ -402,12 +398,8 @@
       "work_flow_access_level_id": 1,
       "createdby": 1,
       "createddate": "2026-01-28 10:39:30",
-      "lastmodifiedby": 1,
-      "lastmodifieddate": "2026-01-29 06:21:23",
-      "position": {
-        "x": 0,
-        "y": 0
-      }
+      "lastmodifiedby": null,
+      "lastmodifieddate": null
     },
     {
       "id": "6",
@@ -431,12 +423,8 @@
       "work_flow_access_level_id": 1,
       "createdby": 1,
       "createddate": "2026-01-28 10:39:30",
-      "lastmodifiedby": 1,
-      "lastmodifieddate": "2026-01-30 05:09:27",
-      "position": {
-        "x": 873,
-        "y": 361
-      }
+      "lastmodifiedby": null,
+      "lastmodifieddate": null
     }
   ]
 }
